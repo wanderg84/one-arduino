@@ -1,0 +1,139 @@
+<ion-view title="Google Rank Report - {{ selectedCategory.name }} {{ selectedRankType.name }}">
+    <ion-content overflow-scroll="true" padding="false" class="has-header" scrolly="addRankReport()"> 
+    	
+		<div class="list list-inset">
+			<div class="item item-input">
+				<label class="item-input-wrapper"> 
+					<input ng-model="importPackageName" type="text" placeholder="구글 앱 패키지 명을 입력하세요.">
+				</label>
+				<button ng-disabled="importPackageName == ''" class="button button-small" ng-click="resetCurrentChart(); getSingleAppReport(importPackageName)">Submit</button>
+			</div>
+			
+			<div ng-show="reportList == null || reportList.length == 0" class="item">
+				하단에 차트 적용 또는 패키지 명을 입력해 주세요.
+			</div>
+		
+			<div ng-show="reportList.length > 0" class="row">
+				<div class="col col-33 button button-balanced">PlayStore</div>
+				<div class="col" layout="row" layout-align="space-around center">
+				</div>
+				<div class="col col-33 button button-assertive">OneStore</div>
+			</div>
+
+			<div ng-repeat="report in reportList" class="row">
+			
+				<div class="col col-33">
+					<div class="item item-thumbnail-left selectable">
+						<img ng-src="{{ report.googleAppInfo.icon }}" /> 
+						<a target="_blank" href="https://play.google.com/store/apps/details?id={{report.googleAppInfo.package_name}}">{{$index+ 1}}. {{ report.googleAppInfo.title }}</a>
+						<p>
+							{{report.googleAppInfo.package_name}}<br />
+							{{report.googleAppInfo.developer}}<br />
+							{{report.googleAppInfo.email}}<br />
+							{{report.googleAppInfo.marketUpdate}} <br />
+						</p>
+					</div>
+				</div>
+		
+				<div class="col col-center" layout="row" layout-align="center center">
+		
+					<!-- 상품 없을 때 -->
+					{{matchedAppInfo = report.oneAppInfoList[0];""}}
+					<i ng-show="matchedAppInfo == null" class="material-icons md-36 color-bad">
+						sentiment_very_dissatisfied
+						<md-tooltip>매칭 상품 없음</md-tooltip>
+					</i>
+					
+					<!-- 신뢰도 -->
+					<input type="hidden" ng-model="isLinked[report.googleAppInfo.package_name]" ng-init="isLinked[report.googleAppInfo.package_name] = false"/>
+					<i ng-show="isLinked[report.googleAppInfo.package_name]"
+						class="material-icons md-36 color-good" >link
+						<md-tooltip>연결된 앱</md-tooltip>
+					</i>
+					<i ng-show="!isLinked[report.googleAppInfo.package_name] && 80 < matchedAppInfo.reliabilityPoint"
+						class="material-icons md-36 color-good" >sentiment_satisfied
+						<md-tooltip>신뢰도 {{matchedAppInfo.reliabilityPoint}}%</md-tooltip>
+					</i> 
+					<i ng-show="!isLinked[report.googleAppInfo.package_name] && 40 < matchedAppInfo.reliabilityPoint  && matchedAppInfo.reliabilityPoint <= 80"
+						class="material-icons md-36 color-normal">sentiment_neutral
+						<md-tooltip>신뢰도 {{matchedAppInfo.reliabilityPoint}}%</md-tooltip>
+					</i> 
+					<i ng-show="!isLinked[report.googleAppInfo.package_name] && matchedAppInfo.reliabilityPoint <= 40"
+						class="material-icons md-36 color-bad">sentiment_dissatisfied
+						<md-tooltip>신뢰도 {{matchedAppInfo.reliabilityPoint}}%</md-tooltip>
+					</i>
+		
+					<!-- 판매상태 -->
+					<i ng-show="matchedAppInfo.saleStat == 'PD000403'"
+						class="material-icons md-36 color-good">monetization_on
+						<md-tooltip>{{saleStatCd[matchedAppInfo.saleStat]}}</md-tooltip>
+						</i> 
+					<i ng-show="matchedAppInfo.saleStat != null && matchedAppInfo.saleStat != 'PD000403'"
+						class="material-icons md-36 color-bad">money_off
+						<md-tooltip>{{saleStatCd[matchedAppInfo.saleStat]}}</md-tooltip>
+						</i>
+		
+					<!-- 업데이트 지연 -->
+					<i ng-show="matchedAppInfo.updateDelay > 50"
+						class="material-icons md-36 color-alert">timer_off
+						<md-tooltip>업데이트 {{matchedAppInfo.updateDelay}}일 지연</md-tooltip>
+						</i>
+		
+				</div>
+		
+				<div class="col col-33 col-center" style="height: 100%">
+					
+					<div ng-show="matchedAppInfo.cid == null" class="item bar bar-stable">
+						<h3>
+							상품 없음
+							</h1>
+					</div>
+					
+					<div ng-repeat="oneAppInfo in report.oneAppInfoList" ng-hide="matchedAppInfo.cid != oneAppInfo.cid && !isOpen[matchedAppInfo.cid]" class="item item-thumbnail-left selectable">
+						<!-- <img ng-src="{{ report.icon }}" />  -->
+						<img ng-src="https://dev.onestore.co.kr/icms-app/contents/iconImage/{{oneAppInfo.cid}}">
+							<input type="hidden" ng-model="isLinked[oneAppInfo.cid]" ng-init="isLinked[oneAppInfo.cid]=oneAppInfo.linked; isLinked[report.googleAppInfo.package_name] = isLinked[oneAppInfo.cid] ? isLinked[oneAppInfo.cid] : isLinked[report.googleAppInfo.package_name]"/>
+							<md-button ng-show="isLinked[oneAppInfo.cid]" ng-click="unLinkApp($event, oneAppInfo.cid, $parent.$index)" class="appLink material-icons md-24 color-alert">
+								link
+								<md-tooltip>연결 제거</md-tooltip>
+							</md-button>
+							<md-button ng-show="!isLinked[oneAppInfo.cid]" ng-click="linkApp($event, oneAppInfo.cid, report.googleAppInfo.package_name, $parent.$index)" class="appLink material-icons md-24 color-bad">
+								link
+								<md-tooltip>앱 연결 </md-tooltip>
+							</md-button>
+						</img>
+						
+						<span ng-show="oneAppInfo.saleStat != 'PD000403'">{{ oneAppInfo.prodName }}</span>
+						<a ng-show="oneAppInfo.saleStat == 'PD000403'" target="_blank" href="http://www.tstore.co.kr/userpoc/apps/view?pid={{oneAppInfo.cid}}">{{ oneAppInfo.prodName }}</a>
+						<p>
+							<span ng-show="isLinked[oneAppInfo.cid]">[연결된 앱]</span>
+							<span ng-show="!isLinked[oneAppInfo.cid]">유사도 {{oneAppInfo.reliabilityPoint}}%</span><br />
+							{{oneAppInfo.cid}}<br /> 
+							{{oneAppInfo.packageName}}<br />
+							{{oneAppInfo.sellerName}}<br />
+							{{oneAppInfo.sellerEmail}}<br />
+							[{{saleStatCd[oneAppInfo.saleStat]}}] {{oneAppInfo.appUpdateDt}} <span ng-show="oneAppInfo.updateDelay > 0">(업데이트 지연 : {{oneAppInfo.updateDelay}} 일)</span>
+						</p>
+					</div>
+					<md-checkbox ng-show="report.oneAppInfoList.length > 1" ng-model="isOpen[matchedAppInfo.cid]" layout="row" class="hidebox" aria-label="더보기">유사상품 더보기</md-checkbox>
+				</div>
+			</div>
+			
+			<ng-button ng-show="currentChart.url && reportList.length >= 300" ng-click="getRankAppReport(currentChart.url)" layout="row" layout-align="center start" class="item md-raised">더보기</ng-button>
+			<div layout="row" layout-sm="column" layout-align="space-around">
+		      <md-progress-circular ng-show="bottomProgress" md-mode="indeterminate"></md-progress-circular>
+		    </div>
+			<div style="height:60px"> </div>
+		</div>
+	</ion-content>
+	
+    <div class="tabs" layout="row" layout-align="center center">
+	  <md-select flex class="tab-item" ng-model="selectedCategory">
+	    <md-option ng-value="category" ng-repeat="category in categoryList">{{ category.name }}</md-option>
+	  </md-select>
+	  <md-select flex class="tab-item"x ng-model="selectedRankType">
+	    <md-option ng-value="rankType" ng-repeat="rankType in rankTypeList">{{ rankType.name }}</md-option>
+	  </md-select>
+	  <button flex class="tab-item button button-positive" ng-click="resetCurrentChart(); getRankAppReport(selectedCategory.url + selectedRankType.url + selectedCategory.options)"> 차트 적용 </button>
+	</div>
+</ion-view>
